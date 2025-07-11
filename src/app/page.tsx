@@ -55,8 +55,8 @@ export default function Home() {
   return (
     <main className="p-4">
       <h1 className="text-xl font-bold mb-4">Socket.IO Chat</h1>
-      <h2 className="text-sm text-gray-600 mb-2">
-        👥 Online users: {userCount}
+      <h2 className="text-sm text-white font-bold mb-2">
+        👥 Online Users: {userCount}
       </h2>
       <div className="border p-4 h-64 overflow-y-scroll mb-4 bg-gray-100">
         {messages.map((msg, idx) => (

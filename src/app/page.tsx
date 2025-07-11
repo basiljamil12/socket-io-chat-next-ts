@@ -1,40 +1,66 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { io, Socket } from "socket.io-client";
 
-export default function HomePage() {
-  const [messages, setMessages] = useState<string[]>([]);
+export default function Home() {
   const [input, setInput] = useState("");
-  const socketRef = useRef<WebSocket | null>(null);
-
+  const [messages, setMessages] = useState<string[]>([]);
+  const socketRef = useRef<Socket | null>(null);
+  const [userCount, setUserCount] = useState<number>(1);
   useEffect(() => {
-    fetch("/api/socket"); // Trigger WebSocket server setup
+    const initSocket = async () => {
+      await fetch("/api/socket"); // wait for server init
 
-    const socket = new WebSocket(`ws://${window.location.host}`);
-    socketRef.current = socket;
+      const socket = io(undefined, {
+        path: "/api/socketio",
+      });
 
-    socket.onmessage = (event) => {
-      setMessages((prev) => [...prev, event.data]);
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        console.log("✅ Connected to Socket.IO");
+      });
+
+      socket.on("message", (msg: string) => {
+        console.log("📥 Listening for messages:", msg);
+        setMessages((prev) => [...prev, msg]);
+      });
+      socket.on("userCount", (count: number) => {
+        console.log("👥 Online users:", count);
+        setUserCount(count);
+      });
+      socket.onAny((event, ...args) => {
+        console.log("📡 Received event:", event, args);
+      });
+      socket.on("disconnect", () => {
+        console.log("❌ Disconnected from Socket.IO");
+      });
     };
 
+    initSocket();
+
     return () => {
-      socket.close();
+      socketRef.current?.disconnect();
     };
   }, []);
 
   const sendMessage = () => {
-    if (socketRef.current?.readyState === WebSocket.OPEN && input.trim()) {
-      socketRef.current.send(input);
+    if (socketRef.current && input.trim()) {
+      socketRef.current.emit("message", input);
       setInput("");
     }
   };
 
   return (
     <main className="p-4">
-      <h1 className="text-xl font-bold mb-4">WebSocket Chat</h1>
+      <h1 className="text-xl font-bold mb-4">Socket.IO Chat</h1>
+      <h2 className="text-sm text-gray-600 mb-2">
+        👥 Online users: {userCount}
+      </h2>
       <div className="border p-4 h-64 overflow-y-scroll mb-4 bg-gray-100">
         {messages.map((msg, idx) => (
-          <div key={idx} className="text-sm mb-1">
+          <div key={idx} className="text-sm mb-1 text-black">
             {msg}
           </div>
         ))}
@@ -44,7 +70,7 @@ export default function HomePage() {
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && sendMessage()}
         placeholder="Type a message"
-        className="border p-2 mr-2"
+        className="border p-2 mr-2 "
       />
       <button
         onClick={sendMessage}
